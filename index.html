@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>פרופר · טלפרומטר</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050505; --ink:#f5f2ec; --dim:#4a4640;
+    --amber:#ffb347; --panel:#121110; --line:#2a2825;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--bg);color:var(--ink);font-family:'Heebo',sans-serif;overflow:hidden;height:100%}
+
+  /* ===== reading guide ===== */
+  .guide{position:fixed;top:38vh;right:0;left:0;pointer-events:none;z-index:5}
+  .guide .arrow{position:absolute;right:18px;top:-14px;color:var(--amber);font-size:28px;opacity:.9}
+  .guide .bar{height:1px;background:linear-gradient(to left,var(--amber),transparent 55%);opacity:.5}
+  .fade{position:fixed;right:0;left:0;pointer-events:none;z-index:4}
+  .fade.top{top:0;height:22vh;background:linear-gradient(to bottom,var(--bg) 25%,transparent)}
+  .fade.bottom{bottom:0;height:18vh;background:linear-gradient(to top,var(--bg) 15%,transparent)}
+
+  /* ===== scroller ===== */
+  #viewport{position:fixed;inset:0;overflow:hidden}
+  #scroller{padding:38vh 8vw 70vh;max-width:1200px;margin:0 auto;will-change:transform}
+  #text{font-size:var(--fs,60px);line-height:1.55;font-weight:600;letter-spacing:.2px}
+  #text p{margin-bottom:1.1em}
+  #text .cue{display:block;font-size:.38em;font-weight:400;color:var(--amber);opacity:.55;letter-spacing:2px;margin:2.2em 0 1.2em;border-top:1px solid var(--line);padding-top:1em}
+  #text .note{color:var(--dim);font-weight:300;font-style:italic}
+  #text .empty{color:var(--dim);font-size:.5em;font-weight:300;text-align:center}
+
+  /* ===== hud ===== */
+  #hud{position:fixed;bottom:0;right:0;left:0;z-index:20;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;padding:14px 20px;background:linear-gradient(to top,rgba(5,5,5,.95),rgba(5,5,5,.7) 70%,transparent);transition:opacity .4s, transform .4s}
+  body.hide-hud #hud,body.hide-hud .kbd-hint,body.hide-hud .brand{opacity:0;pointer-events:none}
+  .btn{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:15px;font-weight:600;padding:10px 18px;border-radius:10px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--amber);color:var(--amber)}
+  .btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .btn.primary{background:var(--amber);color:#1a1204;border-color:var(--amber);font-weight:800;min-width:110px}
+  .btn.primary:hover{filter:brightness(1.08);color:#1a1204}
+  .ctrl{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;color:#9a958c}
+  .ctrl b{color:var(--ink);font-size:15px;min-width:34px;text-align:center}
+  .ctrl button{background:none;border:none;color:var(--amber);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+  .kbd-hint{position:fixed;top:14px;left:16px;z-index:20;font-size:12px;color:#6b665e;letter-spacing:.4px;transition:opacity .4s}
+  .brand{position:fixed;top:14px;right:18px;z-index:20;font-size:13px;font-weight:800;color:var(--amber);letter-spacing:3px;transition:opacity .4s;cursor:pointer}
+
+  /* ===== countdown ===== */
+  #count{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,5,5,.88);z-index:40;font-size:180px;font-weight:800;color:var(--amber)}
+
+  /* ===== library sidebar ===== */
+  #lib{position:fixed;top:0;bottom:0;right:0;width:330px;background:var(--panel);border-left:1px solid var(--line);z-index:30;transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column}
+  #lib.open{transform:translateX(0)}
+  #lib header{padding:18px 20px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  #lib header h2{font-size:16px;font-weight:800;color:var(--amber);letter-spacing:1px}
+  #lib header .close{background:none;border:none;color:#9a958c;font-size:20px;cursor:pointer}
+  #libList{flex:1;overflow-y:auto;padding:10px}
+  .libItem{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s;position:relative}
+  .libItem:hover{border-color:var(--amber)}
+  .libItem.active{border-color:var(--amber);background:rgba(255,179,71,.07)}
+  .libItem .t{font-size:15px;font-weight:700;margin-bottom:3px;padding-left:52px}
+  .libItem .m{font-size:11.5px;color:#8a857c}
+  .libItem .acts{position:absolute;left:8px;top:10px;display:flex;gap:2px;opacity:0;transition:opacity .15s}
+  .libItem:hover .acts{opacity:1}
+  .libItem .acts button{background:none;border:none;color:#9a958c;font-size:14px;cursor:pointer;padding:3px 5px}
+  .libItem .acts button:hover{color:var(--amber)}
+  #lib footer{padding:14px;border-top:1px solid var(--line)}
+  #lib footer .btn{width:100%}
+
+  /* ===== add/edit modal ===== */
+  #editor{position:fixed;inset:0;background:rgba(5,5,5,.97);z-index:50;display:none;flex-direction:column;padding:5vh 10vw;gap:14px}
+  #editor h2{font-size:22px;font-weight:800;color:var(--amber)}
+  #editor .hint{font-size:13.5px;color:#9a958c;line-height:1.6}
+  #titleBox{background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:inherit;font-size:17px;font-weight:700;padding:12px 16px}
+  #titleBox::placeholder{color:#6b665e;font-weight:400}
+  #editor textarea{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--ink);font-family:inherit;font-size:17px;line-height:1.7;padding:20px;resize:none}
+  #editor textarea:focus,#titleBox:focus{outline:2px solid var(--amber)}
+  #editor .row{display:flex;gap:12px}
+
+  @media (prefers-reduced-motion: reduce){ #scroller{transition:none} }
+</style>
+</head>
+<body>
+
+<div class="brand" id="brandBtn" title="פתח ספרייה">PROPER · ON AIR</div>
+<div class="kbd-hint">רווח: הפעל/עצור · ↑↓: מהירות · +/-: גודל · R: להתחלה · L: ספרייה · E: עריכה · N: תסריט חדש · M: מראה</div>
+
+<div class="fade top"></div>
+<div class="fade bottom"></div>
+<div class="guide"><div class="arrow">◀</div><div class="bar"></div></div>
+
+<div id="viewport"><div id="scroller"><div id="text"></div></div></div>
+<div id="count"></div>
+
+<div id="hud">
+  <button class="btn primary" id="playBtn">▶ הפעל</button>
+  <div class="ctrl">מהירות <button id="spDown">−</button><b id="spVal">3.0</b><button id="spUp">+</button></div>
+  <div class="ctrl">טקסט <button id="fsDown">−</button><b id="fsVal">60</b><button id="fsUp">+</button></div>
+  <button class="btn" id="resetBtn">⟲ להתחלה</button>
+  <button class="btn" id="libBtn">☰ ספריית תסריטים</button>
+  <button class="btn" id="newBtn">+ תסריט חדש</button>
+  <button class="btn" id="mirrorBtn">⇄ מראה</button>
+</div>
+
+<!-- library -->
+<aside id="lib">
+  <header><h2>ספריית התסריטים</h2><button class="close" id="libClose">✕</button></header>
+  <div id="libList"></div>
+  <footer><button class="btn primary" id="newBtn2">+ הוסף תסריט חדש</button></footer>
+</aside>
+
+<!-- add / edit -->
+<div id="editor">
+  <h2 id="edTitle">תסריט חדש</h2>
+  <div class="hint">הדבק את הטקסט — הכותרת תזוהה אוטומטית משורת ה-## הראשונה או מהמילים הראשונות (אפשר גם לכתוב ידנית). כל שורה = פסקה · שורה שמתחילה ב-## = סימון סקציה (לא להקראה) · (סוגריים) = הוראת במה עמומה.</div>
+  <input id="titleBox" dir="rtl" placeholder="כותרת התסריט (לא חובה — אזהה לבד)">
+  <textarea id="scriptBox" dir="rtl" placeholder="הדבק כאן את התסריט..."></textarea>
+  <div class="row">
+    <button class="btn primary" id="saveBtn">שמור</button>
+    <button class="btn" id="cancelBtn">ביטול</button>
+  </div>
+</div>
+
+<script>
+/* ================= data layer ================= */
+const LS_LIB='proper_lib', LS_CUR='proper_cur';
+const DEFAULT_VSL=`## סקציה 1 — הוק
+עסקים קטנים בישראל שורפים כל שנה מאות מיליוני שקלים על פרסום דיגיטלי.
+והחלק הכי מטורף? רוב הכסף הזה לא הולך לפייסבוק או לגוגל. הוא הולך לפח.
+לא בגלל שהפרסום לא עובד — פרסום דיגיטלי עובד מדהים.
+אלא בגלל מי שמנהל לכם אותו, ואיך.
+## סקציה 2 — ריפריים
+רוב בעלי העסקים בטוחים שהבעיה שלהם היא "הקמפיין לא עובד".
+אבל האמת? הקמפיין הוא רק חוליה אחת בשרשרת.
+כשהמודעה מובילה לאתר שלא ממיר, כשליד שנכנס מקבל מענה רק אחרי יומיים, כשאף אחד לא בודק למה הלידים שכן מתקשרים — לא סוגרים, וכשאתם מקבלים בסוף החודש קובץ אקסל עם מספרים שאף אחד לא טורח להסביר לכם —
+הכסף לא נעלם בגלל שאתם לא יודעים לנהל עסק. הוא נעלם כי אף אחד לא הסתכל על התמונה המלאה.
+## סקציה 3 — הזדהות
+אם גם אתם שילמתם פעם ריטיינר שמן לחברת שיווק, חיכיתם, האמנתם, ובסוף החודש קיבלתם דוח מעורפל, הבטחות ל"חודש הבא", ותחושת בטן שאתם משלמים ולא באמת יודעים על מה —
+אם אתם מסתכלים על ההוצאה על שיווק ושואלים את עצמכם "רגע, כמה מזה בכלל חזר אליי?" —
+הסרטון הזה בשבילכם. תישארו איתי שתי דקות.
+## סקציה 4 — מי אנחנו
+נעים מאוד, אנחנו פרופר.
+שלושה שותפים: איש מכירות שמבין פסיכולוגיה של לקוחות, מפתחת עם 15 שנות ניסיון בטכנולוגיה ואוטומציות, ואיש עסקים ופיננסים.
+ולמה בכלל הקמנו סוכנות שיווק? כי היינו בצד שלכם. שילמנו המון כסף לחברות שיווק — וקיבלנו מעט מאוד עד כלום.
+וכשלקחנו את זה לידיים שלנו, הבנו משהו מטריף: אפילו בלי ניסיון של שנים, עשינו תוצאות טובות יותר.
+כי אכפת היה לנו, וכי הסתכלנו על הכל — לא רק על הקמפיין.
+## סקציה 5 — העמקת הכאב
+בואו נגיד את האמת על השוק הזה.
+היום כל אחד שראה שני סרטונים ביוטיוב פותח "סוכנות דיגיטל". הם יודעים ללחוץ על כפתורים במערכת של פייסבוק — אבל הם לא מבינים שיווק. לא מבינים פסיכולוגיה. לא מבינים עסקים.
+הם ירוצו לכם קמפיין לאתר שבור שלא ממיר, וישרפו לכם את התקציב. הם ישלחו לכם לידים — ולא יגידו לכם מילה על זה שאף אחד לא חוזר אליהם בזמן.
+וכשתשאלו "מה קורה עם הכסף שלי?" — תקבלו מסך מעורפל ומילים גבוהות.
+וזו לא אשמתכם שנפלתם על זה. ככה השוק הזה בנוי — על ערפל. כי כשהלקוח לא מבין, נוח מאוד להמשיך לגבות ממנו כסף.
+## סקציה 6 — תמונת החלום
+עכשיו דמיינו שזה עובד אחרת.
+(להראות את הדשבורד על הטלפון)
+אתם פותחים את הטלפון — ורואים בזמן אמת, בדשבורד פשוט וברור: כמה לידים נכנסו היום. כמה עלה כל ליד. כמה תקציב נוצל. מה עובד ומה לא.
+כל ליד וכל שקל. שקוף. עשרים וארבע שבע.
+כל ליד שנכנס מקבל מענה אוטומטי תוך שישים שניות — בוואטסאפ, במייל. לפני שהוא בכלל הספיק לפנות למתחרה.
+ופעם בחודש, מישהו שמבין מכירות יושב על שיחות המכירה שלכם, ואומר לכם בדיוק למה עסקאות לא נסגרות — ומה לשנות.
+צוות אחד. תמונה אחת מלאה. אפס ניחושים. ככה שיווק אמור להרגיש.
+## סקציה 7 — הפתרון
+זה בדיוק מה שבנינו בפרופר.
+לא "עוד קמפיינר". מעטפת שיווק מלאה של שלוש מאות שישים מעלות: קמפיינים ממומנים בפייסבוק, גוגל וטיקטוק, דפי נחיתה שממירים, קריאייטיב ומודעות, קידום אורגני, אוטומציות חכמות —
+והדבר שאף סוכנות אחרת לא נותנת: מעטפת מכירות.
+כי אנחנו לא רק מביאים לכם לידים — אנחנו עוזרים לכם לסגור אותם. מנתחים שיחות, משפרים תסריטים, מלווים אתכם עד לכסף בקופה.
+והכל שקוף. דשבורד פתוח עשרים וארבע שבע. אתם רואים כל שקל. כי כשעובדים כמו שצריך — אין מה להסתיר.
+## סקציה 8 — התנגדויות
+עכשיו, אני יודע מה עובר לכם בראש.
+"ניסיתי כבר סוכנויות, נכוויתי."
+בדיוק בגלל זה בנינו את השקיפות המלאה. אתם לא צריכים להאמין לנו — אתם רואים הכל בעצמכם, בכל רגע. הנתונים מדברים, לא אנחנו.
+"זה בטח יקר."
+תעשו רגע חשבון כמה עולה לכם שיווק שלא עובד. תקציב שנשרף, לידים שלא נסגרים, חודשים שהולכים לאיבוד. שיווק נכון הוא לא הוצאה — הוא ההשקעה עם ההחזר הכי גבוה בעסק.
+"אולי נחכה עוד קצת."
+כל חודש שאתם מחכים, המתחרים שלכם לוקחים את הלקוחות שהיו אמורים להגיע אליכם.
+## סקציה 9 — סינון
+ובכנות מלאה — פרופר לא מתאימה לכל אחד.
+אנחנו עובדים עם עסקים רציניים שמבינים ששיווק אמיתי דורש עקביות ותקציב. עסקי שירות, משרדי עורכי דין, רואי חשבון, עסקאות עם ערך גבוה.
+אם אתם מחפשים קסם בשבוע — אנחנו לא הכתובת. אם אתם מחפשים שותף אמיתי לצמיחה — בואו נדבר.
+## סקציה 10 — היפוך סיכון + קריאה לפעולה
+והנה החלק הכי טוב.
+תשאירו פרטים כאן למטה — ובשיחה הראשונה, עוד לפני ששילמתם שקל, אנחנו נבנה לכם תוכנית עבודה קונקרטית: כמה לידים אפשר להביא לעסק שלכם, בכמה כסף, ומה צפי הרווח.
+מספרים אמיתיים. על העסק שלכם. בשיחה עצמה.
+בלי התחייבות. בלי מצגות ריקות. בלי בלבולי מוח.
+אם התוכנית תעשה לכם שכל — נצא לדרך. ואם לא — לפחות תצאו מהשיחה עם תוכנית ביד.
+(חיוך, להאט קצב)
+לחצו על הכפתור, תשאירו פרטים, ונדבר.
+פרופר. שיווק כמו שצריך. שקוף, פשוט, ובלי בלבולי מוח.`;
+
+let lib=JSON.parse(localStorage.getItem(LS_LIB)||'null');
+if(!lib){
+  /* migrate old single-script version if exists */
+  const old=localStorage.getItem('proper_vsl');
+  lib=[{id:Date.now(),title:'תסריט VSL — פרופר',text:old||DEFAULT_VSL,updated:Date.now()}];
+  saveLib();
+}
+let curId=parseInt(localStorage.getItem(LS_CUR))||lib[0].id;
+if(!lib.find(s=>s.id===curId)) curId=lib[0].id;
+
+function saveLib(){localStorage.setItem(LS_LIB,JSON.stringify(lib));}
+function cur(){return lib.find(s=>s.id===curId)||lib[0];}
+
+/* auto-title: first ## line, else first ~5 words */
+function autoTitle(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const cue=lines.find(l=>l.startsWith('##'));
+  if(cue) return cue.replace(/^#+\s*/,'').slice(0,60);
+  if(lines[0]) return lines[0].split(/\s+/).slice(0,6).join(' ').slice(0,60);
+  return 'תסריט ללא שם';
+}
+function fmtDate(ts){const d=new Date(ts);return d.toLocaleDateString('he-IL')+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});}
+function wordCount(t){return t.replace(/^##.*$/gm,'').split(/\s+/).filter(Boolean).length;}
+
+/* ================= render ================= */
+const textEl=document.getElementById('text'), scroller=document.getElementById('scroller');
+function render(){
+  const s=cur(); textEl.innerHTML='';
+  if(!s||!s.text.trim()){textEl.innerHTML='<p class="empty">אין טקסט — לחץ "תסריט חדש" או פתח את הספרייה</p>';return;}
+  s.text.split('\n').forEach(line=>{
+    line=line.trim(); if(!line)return;
+    if(line.startsWith('##')){const c=document.createElement('span');c.className='cue';c.textContent=line.replace(/^#+\s*/,'');textEl.appendChild(c);return;}
+    const p=document.createElement('p');
+    p.innerHTML=line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\(([^)]+)\)/g,'<span class="note">($1)</span>');
+    textEl.appendChild(p);
+  });
+}
+function renderLib(){
+  const list=document.getElementById('libList'); list.innerHTML='';
+  [...lib].sort((a,b)=>b.updated-a.updated).forEach(s=>{
+    const div=document.createElement('div');
+    div.className='libItem'+(s.id===curId?' active':'');
+    div.innerHTML=`<div class="t"></div><div class="m">${wordCount(s.text)} מילים · עודכן ${fmtDate(s.updated)}</div>
+      <div class="acts"><button title="עריכה" data-a="edit">✎</button><button title="שכפול" data-a="dup">⧉</button><button title="מחיקה" data-a="del">🗑</button></div>`;
+    div.querySelector('.t').textContent=s.title;
+    div.onclick=e=>{
+      const a=e.target.dataset.a;
+      if(a==='del'){ if(confirm('למחוק את "'+s.title+'"?')){lib=lib.filter(x=>x.id!==s.id); if(!lib.length){lib=[{id:Date.now(),title:'תסריט ריק',text:'',updated:Date.now()}];} if(curId===s.id){curId=lib[0].id;localStorage.setItem(LS_CUR,curId);reset();render();} saveLib();renderLib();} return;}
+      if(a==='dup'){const c={id:Date.now(),title:s.title+' (עותק)',text:s.text,updated:Date.now()};lib.push(c);saveLib();renderLib();return;}
+      if(a==='edit'){openEditor(s.id);return;}
+      curId=s.id;localStorage.setItem(LS_CUR,curId);reset();render();renderLib();
+    };
+    list.appendChild(div);
+  });
+}
+
+/* ================= scroll engine ================= */
+let y=0,playing=false,last=null,mirrored=false;
+let speed=parseFloat(localStorage.getItem('proper_speed'))||3.0;
+let fs=parseInt(localStorage.getItem('proper_fs'))||60;
+document.documentElement.style.setProperty('--fs',fs+'px');
+
+function applyMirror(b){return mirrored?b+' scaleX(-1)':b;}
+function loop(t){
+  if(!playing){last=null;return;}
+  if(last!==null){
+    y+=speed*30*((t-last)/1000);
+    const max=scroller.scrollHeight-window.innerHeight*.3;
+    if(y>=max){y=max;stop();}
+    scroller.style.transform=applyMirror(`translateY(${-y}px)`);
+  }
+  last=t; requestAnimationFrame(loop);
+}
+function start(){
+  if(playing)return;
+  const c=document.getElementById('count');c.style.display='flex';let n=3;c.textContent=n;
+  const iv=setInterval(()=>{n--;if(n===0){clearInterval(iv);c.style.display='none';playing=true;document.body.classList.add('hide-hud');closeLib();requestAnimationFrame(loop);}else c.textContent=n;},700);
+}
+function stop(){playing=false;document.body.classList.remove('hide-hud');playBtn.textContent='▶ הפעל';}
+function toggle(){playing?stop():(playBtn.textContent='❚❚ עצור',start());}
+function reset(){y=0;scroller.style.transform=applyMirror('translateY(0)');stop();}
+function updHud(){spVal.textContent=speed.toFixed(1);fsVal.textContent=fs;localStorage.setItem('proper_speed',speed);localStorage.setItem('proper_fs',fs);}
+function setSpeed(d){speed=Math.min(10,Math.max(.5,+(speed+d).toFixed(1)));updHud();}
+function setFs(d){fs=Math.min(140,Math.max(34,fs+d));document.documentElement.style.setProperty('--fs',fs+'px');updHud();}
+updHud();
+
+/* ================= library ui ================= */
+const libEl=document.getElementById('lib');
+function openLib(){renderLib();libEl.classList.add('open');}
+function closeLib(){libEl.classList.remove('open');}
+libBtn.onclick=()=>libEl.classList.contains('open')?closeLib():openLib();
+libClose.onclick=closeLib;
+brandBtn.onclick=()=>libEl.classList.contains('open')?closeLib():openLib();
+
+/* ================= editor ================= */
+const editor=document.getElementById('editor'), box=document.getElementById('scriptBox'), titleBox=document.getElementById('titleBox');
+let editingId=null;
+function openEditor(id){
+  editingId=id;
+  if(id){const s=lib.find(x=>x.id===id);edTitle.textContent='עריכת תסריט';titleBox.value=s.title;box.value=s.text;}
+  else{edTitle.textContent='תסריט חדש';titleBox.value='';box.value='';}
+  editor.style.display='flex';stop();box.focus();
+}
+saveBtn.onclick=()=>{
+  const text=box.value;
+  const title=titleBox.value.trim()||autoTitle(text);
+  if(editingId){const s=lib.find(x=>x.id===editingId);s.text=text;s.title=title;s.updated=Date.now();curId=s.id;}
+  else{const s={id:Date.now(),title,text,updated:Date.now()};lib.push(s);curId=s.id;}
+  localStorage.setItem(LS_CUR,curId);saveLib();render();reset();renderLib();
+  editor.style.display='none';
+};
+cancelBtn.onclick=()=>{editor.style.display='none';};
+newBtn.onclick=()=>openEditor(null);
+newBtn2.onclick=()=>openEditor(null);
+
+/* ================= misc controls ================= */
+playBtn.onclick=toggle;
+spUp.onclick=()=>setSpeed(.5);spDown.onclick=()=>setSpeed(-.5);
+fsUp.onclick=()=>setFs(4);fsDown.onclick=()=>setFs(-4);
+resetBtn.onclick=reset;
+mirrorBtn.onclick=()=>{mirrored=!mirrored;scroller.style.transform=applyMirror(`translateY(${-y}px)`);};
+
+window.addEventListener('wheel',e=>{
+  if(playing||editor.style.display==='flex')return;
+  y=Math.max(0,y+e.deltaY);
+  scroller.style.transform=applyMirror(`translateY(${-y}px)`);
+});
+let hudTimer=null;
+window.addEventListener('mousemove',()=>{
+  if(!playing)return;
+  document.body.classList.remove('hide-hud');
+  clearTimeout(hudTimer);
+  hudTimer=setTimeout(()=>{if(playing)document.body.classList.add('hide-hud');},2000);
+});
+window.addEventListener('keydown',e=>{
+  if(editor.style.display==='flex'){if(e.key==='Escape')cancelBtn.onclick();return;}
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  switch(e.key){
+    case ' ':e.preventDefault();toggle();break;
+    case 'ArrowUp':e.preventDefault();setSpeed(.5);break;
+    case 'ArrowDown':e.preventDefault();setSpeed(-.5);break;
+    case '+':case '=':setFs(4);break;
+    case '-':setFs(-4);break;
+    case 'r':case 'R':case 'ר':reset();break;
+    case 'l':case 'L':case 'ל':libBtn.onclick();break;
+    case 'n':case 'N':case 'מ':openEditor(null);break;
+    case 'e':case 'E':case 'ק':openEditor(curId);break;
+    case 'm':case 'M':case 'צ':mirrorBtn.onclick();break;
+    case 'Escape':closeLib();break;
+  }
+});
+
+render();
+</script>
+</body>
+</html>
