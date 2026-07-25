@@ -82,7 +82,7 @@
 <body>
 
 <div class="brand" id="brandBtn" title="פתח ספרייה">PROPER · ON AIR</div>
-<div class="kbd-hint">רווח: הפעל/עצור · ↑↓: מהירות · +/-: גודל · R: להתחלה · L: ספרייה · E: עריכה · N: תסריט חדש · M: מראה</div>
+<div class="kbd-hint">רווח: הפעל/עצור · ↑↓: מהירות · Shift+↑↓ / PgUp/PgDn: גלילה בלייב · +/-: גודל · R: להתחלה · L: ספרייה · E: עריכה · N: תסריט חדש · M: מראה</div>
 
 <div class="fade top"></div>
 <div class="fade bottom"></div>
@@ -95,6 +95,7 @@
   <button class="btn primary" id="playBtn">▶ הפעל</button>
   <div class="ctrl">מהירות <button id="spDown">−</button><b id="spVal">3.0</b><button id="spUp">+</button></div>
   <div class="ctrl">טקסט <button id="fsDown">−</button><b id="fsVal">60</b><button id="fsUp">+</button></div>
+  <div class="ctrl">גלול <button id="nudgeUp" title="למעלה בטקסט">▲</button><button id="nudgeDown" title="למטה בטקסט">▼</button></div>
   <button class="btn" id="resetBtn">⟲ להתחלה</button>
   <button class="btn" id="libBtn">☰ ספריית תסריטים</button>
   <button class="btn" id="newBtn">+ תסריט חדש</button>
@@ -490,6 +491,11 @@ function start(){
 function stop(){playing=false;document.body.classList.remove('hide-hud');playBtn.textContent='▶ הפעל';}
 function toggle(){playing?stop():(playBtn.textContent='❚❚ עצור',start());}
 function reset(){y=0;scroller.style.transform=applyMirror('translateY(0)');stop();}
+function nudge(delta){
+  const max=Math.max(0, scroller.scrollHeight-window.innerHeight*.3);
+  y=Math.min(max, Math.max(0, y+delta));
+  scroller.style.transform=applyMirror(`translateY(${-y}px)`);
+}
 function updHud(){spVal.textContent=speed.toFixed(1);fsVal.textContent=fs;localStorage.setItem('proper_speed',speed);localStorage.setItem('proper_fs',fs);}
 function setSpeed(d){speed=Math.min(10,Math.max(.5,+(speed+d).toFixed(1)));updHud();}
 function setFs(d){fs=Math.min(140,Math.max(34,fs+d));document.documentElement.style.setProperty('--fs',fs+'px');updHud();}
@@ -530,12 +536,13 @@ spUp.onclick=()=>setSpeed(.5);spDown.onclick=()=>setSpeed(-.5);
 fsUp.onclick=()=>setFs(4);fsDown.onclick=()=>setFs(-4);
 resetBtn.onclick=reset;
 mirrorBtn.onclick=()=>{mirrored=!mirrored;scroller.style.transform=applyMirror(`translateY(${-y}px)`);};
+nudgeUp.onclick=()=>nudge(-120);
+nudgeDown.onclick=()=>nudge(120);
 
 window.addEventListener('wheel',e=>{
-  if(playing||editor.style.display==='flex')return;
-  y=Math.max(0,y+e.deltaY);
-  scroller.style.transform=applyMirror(`translateY(${-y}px)`);
-});
+  if(editor.style.display==='flex')return;
+  nudge(e.deltaY);
+},{passive:true});
 let hudTimer=null;
 window.addEventListener('mousemove',()=>{
   if(!playing)return;
@@ -546,10 +553,13 @@ window.addEventListener('mousemove',()=>{
 window.addEventListener('keydown',e=>{
   if(editor.style.display==='flex'){if(e.key==='Escape')cancelBtn.onclick();return;}
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  const pageStep=Math.round(window.innerHeight*.7);
   switch(e.key){
     case ' ':e.preventDefault();toggle();break;
-    case 'ArrowUp':e.preventDefault();setSpeed(.5);break;
-    case 'ArrowDown':e.preventDefault();setSpeed(-.5);break;
+    case 'ArrowUp':e.preventDefault();if(e.shiftKey)nudge(-120);else setSpeed(.5);break;
+    case 'ArrowDown':e.preventDefault();if(e.shiftKey)nudge(120);else setSpeed(-.5);break;
+    case 'PageUp':e.preventDefault();nudge(-pageStep);break;
+    case 'PageDown':e.preventDefault();nudge(pageStep);break;
     case '+':case '=':setFs(4);break;
     case '-':setFs(-4);break;
     case 'r':case 'R':case 'ר':reset();break;
