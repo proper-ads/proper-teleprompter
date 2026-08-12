@@ -39,7 +39,7 @@
   .btn.primary{background:var(--amber);color:#1a1204;border-color:var(--amber);font-weight:800;min-width:110px}
   .btn.primary:hover{filter:brightness(1.08);color:#1a1204}
   .ctrl{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;color:#9a958c}
-  .ctrl b{color:var(--ink);font-size:15px;min-width:34px;text-align:center}
+  .ctrl b{color:var(--ink);font-size:15px;min-width:48px;text-align:center}
   .ctrl button{background:none;border:none;color:var(--amber);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
   .kbd-hint{position:fixed;top:14px;left:16px;z-index:20;font-size:12px;color:#6b665e;letter-spacing:.4px;transition:opacity .4s}
   .brand{position:fixed;top:14px;right:18px;z-index:20;font-size:13px;font-weight:800;color:var(--amber);letter-spacing:3px;transition:opacity .4s;cursor:pointer}
@@ -57,11 +57,11 @@
   .libItem{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s;position:relative}
   .libItem:hover{border-color:var(--amber)}
   .libItem.active{border-color:var(--amber);background:rgba(255,179,71,.07)}
-  .libItem .t{font-size:15px;font-weight:700;margin-bottom:3px;padding-left:52px}
+  .libItem .t{font-size:15px;font-weight:700;margin-bottom:3px;padding-left:104px}
   .libItem .m{font-size:11.5px;color:#8a857c}
-  .libItem .acts{position:absolute;left:8px;top:10px;display:flex;gap:2px;opacity:0;transition:opacity .15s}
-  .libItem:hover .acts{opacity:1}
-  .libItem .acts button{background:none;border:none;color:#9a958c;font-size:14px;cursor:pointer;padding:3px 5px}
+  /* Always visible: on a phone there is no hover, so hiding these hid editing entirely */
+  .libItem .acts{position:absolute;left:6px;top:6px;display:flex;gap:2px}
+  .libItem .acts button{background:none;border:none;color:#9a958c;font-size:16px;cursor:pointer;padding:6px 7px}
   .libItem .acts button:hover{color:var(--amber)}
   #lib footer{padding:14px;border-top:1px solid var(--line)}
   #lib footer .btn{width:100%}
@@ -98,6 +98,7 @@
   <div class="ctrl">גלול <button id="nudgeUp" title="למעלה בטקסט">▲</button><button id="nudgeDown" title="למטה בטקסט">▼</button></div>
   <button class="btn" id="resetBtn">⟲ להתחלה</button>
   <button class="btn" id="libBtn">☰ ספריית תסריטים</button>
+  <button class="btn" id="editBtn">✎ ערוך תסריט</button>
   <button class="btn" id="newBtn">+ תסריט חדש</button>
   <button class="btn" id="mirrorBtn">⇄ מראה</button>
 </div>
@@ -267,8 +268,10 @@ function nudge(delta){
   y=Math.min(max, Math.max(0, y+delta));
   scroller.style.transform=applyMirror(`translateY(${-y}px)`);
 }
-function updHud(){spVal.textContent=speed.toFixed(1);fsVal.textContent=fs;localStorage.setItem('proper_speed',speed);localStorage.setItem('proper_fs',fs);}
-function setSpeed(d){speed=Math.min(10,Math.max(.5,+(speed+d).toFixed(1)));updHud();}
+/* Speed moves in .25 steps, so show the second decimal only when it carries a value */
+function fmtSpeed(v){return (v*100)%50===0?v.toFixed(1):v.toFixed(2);}
+function updHud(){spVal.textContent=fmtSpeed(speed);fsVal.textContent=fs;localStorage.setItem('proper_speed',speed);localStorage.setItem('proper_fs',fs);}
+function setSpeed(d){speed=Math.min(10,Math.max(.25,+(speed+d).toFixed(2)));updHud();}
 function setFs(d){fs=Math.min(140,Math.max(14,fs+d));document.documentElement.style.setProperty('--fs',fs+'px');updHud();}
 updHud();
 
@@ -300,10 +303,11 @@ saveBtn.onclick=()=>{
 cancelBtn.onclick=()=>{editor.style.display='none';};
 newBtn.onclick=()=>openEditor(null);
 newBtn2.onclick=()=>openEditor(null);
+editBtn.onclick=()=>openEditor(curId);
 
 /* ================= misc controls ================= */
 playBtn.onclick=toggle;
-spUp.onclick=()=>setSpeed(.5);spDown.onclick=()=>setSpeed(-.5);
+spUp.onclick=()=>setSpeed(.25);spDown.onclick=()=>setSpeed(-.25);
 fsUp.onclick=()=>setFs(4);fsDown.onclick=()=>setFs(-4);
 resetBtn.onclick=reset;
 mirrorBtn.onclick=()=>{mirrored=!mirrored;scroller.style.transform=applyMirror(`translateY(${-y}px)`);};
@@ -327,8 +331,8 @@ window.addEventListener('keydown',e=>{
   const pageStep=Math.round(window.innerHeight*.7);
   switch(e.key){
     case ' ':e.preventDefault();toggle();break;
-    case 'ArrowUp':e.preventDefault();if(e.shiftKey)nudge(-120);else setSpeed(.5);break;
-    case 'ArrowDown':e.preventDefault();if(e.shiftKey)nudge(120);else setSpeed(-.5);break;
+    case 'ArrowUp':e.preventDefault();if(e.shiftKey)nudge(-120);else setSpeed(.25);break;
+    case 'ArrowDown':e.preventDefault();if(e.shiftKey)nudge(120);else setSpeed(-.25);break;
     case 'PageUp':e.preventDefault();nudge(-pageStep);break;
     case 'PageDown':e.preventDefault();nudge(pageStep);break;
     case '+':case '=':setFs(4);break;
