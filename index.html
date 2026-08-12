@@ -269,7 +269,7 @@ function nudge(delta){
 }
 function updHud(){spVal.textContent=speed.toFixed(1);fsVal.textContent=fs;localStorage.setItem('proper_speed',speed);localStorage.setItem('proper_fs',fs);}
 function setSpeed(d){speed=Math.min(10,Math.max(.5,+(speed+d).toFixed(1)));updHud();}
-function setFs(d){fs=Math.min(140,Math.max(34,fs+d));document.documentElement.style.setProperty('--fs',fs+'px');updHud();}
+function setFs(d){fs=Math.min(140,Math.max(14,fs+d));document.documentElement.style.setProperty('--fs',fs+'px');updHud();}
 updHud();
 
 /* ================= library ui ================= */
